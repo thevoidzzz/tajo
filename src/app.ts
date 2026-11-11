@@ -17,9 +17,13 @@ const createBody = z.object({
   horometerHours,
 })
 
-const patchBody = z.object({
-  horometerHours,
-})
+const patchBody = z
+  .object({
+    code: code.optional(),
+    type: typeCode.optional(),
+    horometerHours: horometerHours.optional(),
+  })
+  .refine((body) => body.code !== undefined || body.type !== undefined || body.horometerHours !== undefined)
 
 const equipmentSelect = `
   SELECT e.equipment_id AS id,
@@ -88,6 +92,23 @@ export function createApp(pool: Pool): Express {
     res.json(rows.rows)
   }))
 
+  app.delete("/equipment/:id", route(async (req: Request, res: Response) => {
+    try {
+      const removed = await pool.query("DELETE FROM equipment WHERE equipment_id = $1", [req.params.id])
+      if (!removed.rowCount) {
+        fail(res, 404, "not_found")
+        return
+      }
+    } catch (error) {
+      if (isInvalidUuid(error)) {
+        fail(res, 404, "not_found")
+        return
+      }
+      throw error
+    }
+    res.status(204).end()
+  }))
+
   app.patch("/equipment/:id", route(async (req: Request, res: Response) => {
     const parsed = patchBody.safeParse(req.body)
     if (!parsed.success) {
@@ -98,11 +119,13 @@ export function createApp(pool: Pool): Express {
       const updated = await pool.query(
         `
         UPDATE equipment
-        SET horometer_hours = $2
+        SET code = COALESCE($2, code),
+            type_code = COALESCE($3, type_code),
+            horometer_hours = COALESCE($4, horometer_hours)
         WHERE equipment_id = $1
         RETURNING equipment_id
         `,
-        [req.params.id, parsed.data.horometerHours],
+        [req.params.id, parsed.data.code ?? null, parsed.data.type ?? null, parsed.data.horometerHours ?? null],
       )
       if (!updated.rowCount) {
         fail(res, 404, "not_found")
@@ -111,6 +134,14 @@ export function createApp(pool: Pool): Express {
     } catch (error) {
       if (isInvalidUuid(error)) {
         fail(res, 404, "not_found")
+        return
+      }
+      if (isBelowCycle(error)) {
+        fail(res, 422, "horometer_below_cycle")
+        return
+      }
+      if (isUniqueViolation(error)) {
+        fail(res, 409, "duplicate_code")
         return
       }
       throw error
@@ -135,9 +166,22 @@ function isInvalidUuid(error: unknown): boolean {
   return postgresCode(error) === "22P02"
 }
 
+function isBelowCycle(error: unknown): boolean {
+  return postgresCode(error) === "23514" && postgresConstraint(error) === "equipment_horometer_covers_cycle"
+}
+
 function postgresCode(error: unknown): string | undefined {
-  if (typeof error === "object" && error !== null && "code" in error && typeof error.code === "string") {
-    return error.code
+  return postgresField(error, "code")
+}
+
+function postgresConstraint(error: unknown): string | undefined {
+  return postgresField(error, "constraint")
+}
+
+function postgresField(error: unknown, field: string): string | undefined {
+  if (typeof error === "object" && error !== null && field in error) {
+    const value = (error as Record<string, unknown>)[field]
+    if (typeof value === "string") return value
   }
   return undefined
 }

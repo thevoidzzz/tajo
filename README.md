@@ -29,7 +29,7 @@ npm install
 DATABASE_URL=postgresql://tajo@localhost:5435/tajo npm test
 ```
 
-`POST /equipment` da de alta. `PATCH /equipment/:id` con `horometerHours` anota horas. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
+`POST /equipment` da de alta. `PATCH /equipment/:id` cambia código, tipo u horómetro. Un horómetro por debajo del inicio del ciclo se rechaza. `DELETE /equipment/:id` saca el equipo del patio. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
 
 ## Herramientas
 
