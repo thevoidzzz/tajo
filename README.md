@@ -29,7 +29,7 @@ npm install
 DATABASE_URL=postgresql://tajo@localhost:5435/tajo npm test
 ```
 
-`POST /equipment` da de alta. `PATCH /equipment/:id` cambia código, tipo u horómetro. Un horómetro por debajo del inicio del ciclo se rechaza. `DELETE /equipment/:id` saca el equipo del patio y su historial. `POST /equipment/:id/maintenance` anota un mantenimiento en el horómetro actual y abre el ciclo. `GET /equipment/:id/maintenance` devuelve ese historial. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
+`GET /health` responde si la API llega a la base. `POST /equipment` da de alta. `PATCH /equipment/:id` cambia código, tipo u horómetro. Un horómetro por debajo del inicio del ciclo se rechaza. `DELETE /equipment/:id` saca el equipo del patio y su historial. `POST /equipment/:id/maintenance` anota un mantenimiento en el horómetro actual y abre el ciclo. `GET /equipment/:id/maintenance` devuelve ese historial. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
 
 ## Herramientas
 
