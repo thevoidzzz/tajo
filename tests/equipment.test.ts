@@ -19,7 +19,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
-  await pool.query("TRUNCATE equipment")
+  await pool.query("TRUNCATE equipment CASCADE")
 })
 
 afterAll(async () => {
@@ -211,6 +211,102 @@ test("deleting a machine removes it from the yard", async () => {
   expect(listed.body).toEqual([])
   expect(again.status).toBe(404)
   expect(again.body.error).toBe("not_found")
+})
+
+test("recording a maintenance restarts the cycle and keeps the horometer", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-014",
+    type: "camion",
+    horometerHours: 0,
+  })
+  await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 250 })
+
+  const recorded = await request(app).post(`/equipment/${created.body.id}/maintenance`).send({})
+  const listed = await request(app).get("/equipment")
+  const history = await request(app).get(`/equipment/${created.body.id}/maintenance`)
+
+  expect(recorded.status).toBe(201)
+  expect(recorded.body.horometerHours).toBe(250)
+  expect(listed.body[0]).toMatchObject({
+    horometerHours: 250,
+    cycleStartHours: 250,
+    status: "Al día",
+  })
+  expect(history.body).toEqual([expect.objectContaining({ horometerHours: 250 })])
+})
+
+test("another 250 hours after maintenance requires maintenance again", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-020",
+    type: "camion",
+    horometerHours: 0,
+  })
+  await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 250 })
+  await request(app).post(`/equipment/${created.body.id}/maintenance`).send({})
+
+  const before = await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 499 })
+  const after = await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 500 })
+
+  expect(before.body).toMatchObject({ horometerHours: 499, cycleStartHours: 250, status: "Al día" })
+  expect(after.body).toMatchObject({
+    horometerHours: 500,
+    cycleStartHours: 250,
+    status: "Requiere mantenimiento",
+  })
+})
+
+test("a second maintenance stays in the history even when the machine is current", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-021",
+    type: "camion",
+    horometerHours: 80,
+  })
+
+  await request(app).post(`/equipment/${created.body.id}/maintenance`).send({})
+  await request(app).post(`/equipment/${created.body.id}/maintenance`).send({})
+  const history = await request(app).get(`/equipment/${created.body.id}/maintenance`)
+
+  expect(history.body).toHaveLength(2)
+  expect(history.body[0].horometerHours).toBe(80)
+  expect(history.body[1].horometerHours).toBe(80)
+  expect(history.body[0].recordedAt <= history.body[1].recordedAt).toBe(true)
+})
+
+test("a maintenance cannot be recorded at a chosen reading", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-022",
+    type: "camion",
+    horometerHours: 40,
+  })
+
+  const rejected = await request(app)
+    .post(`/equipment/${created.body.id}/maintenance`)
+    .send({ horometerHours: 10 })
+  const listed = await request(app).get("/equipment")
+
+  expect(rejected.status).toBe(400)
+  expect(rejected.body.error).toBe("invalid_body")
+  expect(listed.body[0].cycleStartHours).toBe(40)
+})
+
+test("a machine with history can leave the yard", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-023",
+    type: "camion",
+    horometerHours: 10,
+  })
+  await request(app).post(`/equipment/${created.body.id}/maintenance`).send({})
+
+  const removed = await request(app).delete(`/equipment/${created.body.id}`)
+  const listed = await request(app).get("/equipment")
+
+  expect(removed.status).toBe(204)
+  expect(listed.body).toEqual([])
 })
 
 test("an unknown type is rejected", async () => {

@@ -150,6 +150,80 @@ export function createApp(pool: Pool): Express {
     res.json(row.rows[0])
   }))
 
+  app.post("/equipment/:id/maintenance", route(async (req: Request, res: Response) => {
+    if (req.body !== undefined && req.body !== null && Object.keys(req.body as object).length > 0) {
+      fail(res, 400, "invalid_body")
+      return
+    }
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
+      const locked = await client.query<{ horometer_hours: number }>(
+        "SELECT horometer_hours FROM equipment WHERE equipment_id = $1 FOR UPDATE",
+        [req.params.id],
+      )
+      if (!locked.rowCount) {
+        await client.query("ROLLBACK")
+        fail(res, 404, "not_found")
+        return
+      }
+      const recorded = await client.query(
+        `
+        INSERT INTO maintenance (equipment_id, horometer_hours)
+        VALUES ($1, $2)
+        RETURNING maintenance_id AS id,
+                  equipment_id AS "equipmentId",
+                  horometer_hours AS "horometerHours",
+                  recorded_at AS "recordedAt"
+        `,
+        [req.params.id, locked.rows[0].horometer_hours],
+      )
+      await client.query("UPDATE equipment SET cycle_start_hours = horometer_hours WHERE equipment_id = $1", [
+        req.params.id,
+      ])
+      await client.query("COMMIT")
+      res.status(201).json(recorded.rows[0])
+    } catch (error) {
+      await client.query("ROLLBACK")
+      if (isInvalidUuid(error)) {
+        fail(res, 404, "not_found")
+        return
+      }
+      throw error
+    } finally {
+      client.release()
+    }
+  }))
+
+  app.get("/equipment/:id/maintenance", route(async (req: Request, res: Response) => {
+    try {
+      const equipment = await pool.query("SELECT 1 FROM equipment WHERE equipment_id = $1", [req.params.id])
+      if (!equipment.rowCount) {
+        fail(res, 404, "not_found")
+        return
+      }
+      const history = await pool.query(
+        `
+        SELECT maintenance_id AS id,
+               equipment_id AS "equipmentId",
+               horometer_hours AS "horometerHours",
+               recorded_at AS "recordedAt"
+        FROM maintenance
+        WHERE equipment_id = $1
+        ORDER BY recorded_at, maintenance_id
+        `,
+        [req.params.id],
+      )
+      res.json(history.rows)
+    } catch (error) {
+      if (isInvalidUuid(error)) {
+        fail(res, 404, "not_found")
+        return
+      }
+      throw error
+    }
+  }))
+
   app.use((error: unknown, _req: Request, res: Response, _next: (error: unknown) => void) => {
     console.error(error)
     if (!res.headersSent) fail(res, 500, "internal")
