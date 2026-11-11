@@ -57,6 +57,16 @@ export function createApp(pool: Pool): Express {
   const app = express()
   app.use(express.json())
 
+  app.get("/health", route(async (_req: Request, res: Response) => {
+    try {
+      await pool.query("SELECT 1")
+    } catch {
+      fail(res, 503, "database_unavailable")
+      return
+    }
+    res.json({ status: "ok" })
+  }))
+
   app.post("/equipment", route(async (req: Request, res: Response) => {
     const parsed = createBody.safeParse(req.body)
     if (!parsed.success) {
