@@ -14,6 +14,23 @@ La página y la API se publican por separado. El diseño del patio, del ciclo y 
 - [Datos](docs/architecture/DATA.md)
 - [ADR](docs/adr/README.md)
 
+## Pruebas
+
+Hace falta PostgreSQL 16 y Node 22.
+
+```bash
+docker run -d --name tajo-postgres \
+  -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -e POSTGRES_USER=tajo \
+  -e POSTGRES_DB=tajo \
+  -p 5435:5432 \
+  postgres:16
+npm install
+DATABASE_URL=postgresql://tajo@localhost:5435/tajo npm test
+```
+
+`POST /equipment` da de alta. `PATCH /equipment/:id` con `horometerHours` anota horas. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
+
 ## Herramientas
 
 Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y, cuando exista, el comando de despliegue.
