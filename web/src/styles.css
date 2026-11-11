@@ -1,0 +1,166 @@
+:root {
+  --pit: #16130f;
+  --bench: #241f19;
+  --line: #3a332b;
+  --chalk: #e7e1d6;
+  --steel: #a3988a;
+  --vest: #f5b400;
+  --ink: #1a1408;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--pit);
+  color: var(--chalk);
+  font-family: "Barlow", "Avenir Next", sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.45;
+}
+
+.board {
+  max-width: 44rem;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  margin: 0 0 0.85rem;
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 3.5rem;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+}
+
+.tally {
+  display: inline-block;
+  margin: 0 0 1.25rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--vest);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.empty {
+  margin: 0.25rem 0 0;
+}
+
+.yard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.machine {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr auto auto;
+  gap: 0.45rem 1rem;
+  align-items: baseline;
+  padding: 0.95rem 0.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.machine.due {
+  border-left: 6px solid var(--vest);
+  padding-left: 0.75rem;
+}
+
+.code {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.hours {
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  color: var(--steel);
+}
+
+.status.due {
+  background: var(--vest);
+  color: var(--ink);
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-top: 2rem;
+}
+
+label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--steel);
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: var(--chalk);
+  background: var(--bench);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+}
+
+input {
+  min-width: 8rem;
+}
+
+button {
+  background: var(--chalk);
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--chalk);
+  cursor: pointer;
+}
+
+[role="alert"] {
+  margin: 0.9rem 0 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--chalk);
+  outline-offset: 3px;
+}
+
+@media (max-width: 40rem) {
+  h1 {
+    font-size: 2.75rem;
+  }
+
+  .machine {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .code {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .status {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .kind,
+  .hours {
+    grid-column: 1 / -1;
+  }
+}
