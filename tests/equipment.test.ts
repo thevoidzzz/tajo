@@ -134,6 +134,85 @@ test("hours have to be a whole number that is not negative", async () => {
   expect(fraction.body.error).toBe("invalid_body")
 })
 
+test("a horometer edited below the cycle start is rejected and the reading stays", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-014",
+    type: "camion",
+    horometerHours: 1200,
+  })
+
+  const rejected = await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 1199 })
+  const listed = await request(app).get("/equipment")
+
+  expect(rejected.status).toBe(422)
+  expect(rejected.body.error).toBe("horometer_below_cycle")
+  expect(listed.body[0].horometerHours).toBe(1200)
+})
+
+test("a shorter interval marks the same reading as due", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "PF-003",
+    type: "camion",
+    horometerHours: 0,
+  })
+  await request(app).patch(`/equipment/${created.body.id}`).send({ horometerHours: 220 })
+
+  const changed = await request(app).patch(`/equipment/${created.body.id}`).send({ type: "perforadora" })
+
+  expect(changed.status).toBe(200)
+  expect(changed.body).toMatchObject({
+    type: "perforadora",
+    horometerHours: 220,
+    cycleStartHours: 0,
+    intervalHours: 200,
+    status: "Requiere mantenimiento",
+  })
+})
+
+test("a code can change and a code already in the yard is rejected", async () => {
+  const app = createApp(pool)
+  const first = await request(app).post("/equipment").send({
+    code: "CM-014",
+    type: "camion",
+    horometerHours: 10,
+  })
+  await request(app).post("/equipment").send({
+    code: "EX-002",
+    type: "excavadora",
+    horometerHours: 0,
+  })
+
+  const renamed = await request(app).patch(`/equipment/${first.body.id}`).send({ code: "CM-015" })
+  const taken = await request(app).patch(`/equipment/${first.body.id}`).send({ code: "EX-002" })
+  const listed = await request(app).get("/equipment")
+
+  expect(renamed.status).toBe(200)
+  expect(renamed.body.code).toBe("CM-015")
+  expect(taken.status).toBe(409)
+  expect(taken.body.error).toBe("duplicate_code")
+  expect(listed.body.map((item: { code: string }) => item.code)).toContain("CM-015")
+})
+
+test("deleting a machine removes it from the yard", async () => {
+  const app = createApp(pool)
+  const created = await request(app).post("/equipment").send({
+    code: "CM-014",
+    type: "camion",
+    horometerHours: 40,
+  })
+
+  const removed = await request(app).delete(`/equipment/${created.body.id}`)
+  const listed = await request(app).get("/equipment")
+  const again = await request(app).delete(`/equipment/${created.body.id}`)
+
+  expect(removed.status).toBe(204)
+  expect(listed.body).toEqual([])
+  expect(again.status).toBe(404)
+  expect(again.body.error).toBe("not_found")
+})
+
 test("an unknown type is rejected", async () => {
   const response = await request(createApp(pool))
     .post("/equipment")
