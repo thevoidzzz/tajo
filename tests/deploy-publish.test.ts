@@ -98,6 +98,7 @@ test("deploy publishes the page and the API and then applies pending SQL", async
     "curl --fail --silent --show-error --max-time 30 https://patio.example",
     "curl --fail --silent --show-error --max-time 30 https://tajo.fly.dev/health",
   ])
+  expect(await readFile(log, "utf8")).toContain("fly.deploy.toml")
 })
 
 test("deploy reads the production page URL from the CLI text", async () => {

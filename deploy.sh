@@ -143,7 +143,7 @@ if ! "$fly" status --app "$FLY_APP" >/dev/null 2>&1; then
   "$fly" apps create "$FLY_APP"
 fi
 "$fly" secrets set "DATABASE_URL=${DATABASE_URL}" "WEB_ORIGIN=${page_url}" --app "$FLY_APP" --stage
-config=$(mktemp)
+config="$(pwd)/fly.deploy.toml"
 trap 'rm -f "$config"' EXIT
 sed "s/^app = .*/app = \"${FLY_APP}\"/" fly.toml > "$config"
 "$fly" deploy --remote-only --ha=false --now --app "$FLY_APP" --config "$config"
