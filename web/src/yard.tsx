@@ -81,7 +81,7 @@ export function Yard({
       {dueCount === 1 ? <p className="tally">1 requiere mantenimiento</p> : null}
       {dueCount > 1 ? <p className="tally">{dueCount} requieren mantenimiento</p> : null}
       {equipment.length === 0 ? (
-        <p className="empty">El patio está vacío.</p>
+        <p className="empty">El patio está vacío. Anota el código y las horas con las que llega.</p>
       ) : (
         <ul className="yard">
           {equipment.map((item) => (
@@ -165,14 +165,16 @@ function Machine({
         <span className="kind">{typeName[item.type]}</span>
         <span className="hours">
           {item.horometerHours} h
-          {left > 0 ? <span className="left">{left === 1 ? "Falta 1 h" : `Faltan ${left} h`}</span> : null}
+          {left > 0 ? (
+            <span className="left">{left === 1 ? "Falta 1 h para el corte" : `Faltan ${left} h para el corte`}</span>
+          ) : null}
         </span>
         <span className={due ? "status due" : "status"}>{item.status}</span>
       </div>
       <div className="actions">
         <button
           type="button"
-          className="quiet"
+          className={due ? undefined : "quiet"}
           onClick={() => {
             void onMaintain(item.id).catch((caught) => setError(message(caught)))
           }}
