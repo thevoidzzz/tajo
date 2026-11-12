@@ -111,7 +111,51 @@ test("an empty horometer does not add a machine", () => {
   fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
 
   expect(onCreate).not.toHaveBeenCalled()
-  expect(screen.getByRole("alert").textContent).toBe("Revisa el código, el tipo y el horómetro.")
+  expect(screen.getByRole("alert").textContent).toBe("El horómetro se anota en horas enteras, solo números.")
+})
+
+test("a script or too many characters do not enter the yard", () => {
+  const onCreate = vi.fn()
+  render(<Yard equipment={[]} onCreate={onCreate} />)
+
+  fireEvent.change(screen.getByLabelText("Código"), { target: { value: "<script>alert(1)</script>" } })
+  fireEvent.change(screen.getByLabelText("Horómetro"), { target: { value: "1200" } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+
+  expect(onCreate).not.toHaveBeenCalled()
+  expect(screen.getByRole("alert").textContent).toBe("El código usa letras, números y guiones, hasta 32.")
+
+  fireEvent.change(screen.getByLabelText("Código"), { target: { value: "A".repeat(33) } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+  expect(onCreate).not.toHaveBeenCalled()
+})
+
+test("letters or too many hours do not pass as a horometer", () => {
+  const onCreate = vi.fn()
+  render(<Yard equipment={[]} onCreate={onCreate} />)
+
+  fireEvent.change(screen.getByLabelText("Código"), { target: { value: "CM-014" } })
+  fireEvent.change(screen.getByLabelText("Horómetro"), { target: { value: "1200 h" } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+
+  expect(onCreate).not.toHaveBeenCalled()
+  expect(screen.getByRole("alert").textContent).toBe("El horómetro se anota en horas enteras, solo números.")
+
+  fireEvent.change(screen.getByLabelText("Horómetro"), { target: { value: "9999999999" } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+  expect(screen.getByRole("alert").textContent).toBe("El horómetro no admite tantas horas.")
+})
+
+test("a code is shown as text", () => {
+  render(
+    <Yard
+      equipment={[{ ...current, code: "<script>alert(1)</script>" }]}
+      onCreate={async () => {}}
+    />,
+  )
+
+  expect(document.querySelector("script")).toBeNull()
+  expect(screen.getByText("<script>alert(1)</script>")).toBeTruthy()
 })
 
 test("giving a machine a code, a type and a horometer adds it to the yard", async () => {
