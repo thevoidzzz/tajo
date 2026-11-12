@@ -27,15 +27,17 @@ const completeEnv = {
   VERCEL_TOKEN: "vercel-token",
 }
 
-async function sandboxPath(): Promise<{ bin: string; log: string }> {
+async function sandboxPath(vercelStdout = '{"url":"patio.example"}'): Promise<{ bin: string; log: string }> {
   const dir = await mkdtemp(path.join(tmpdir(), "tajo-deploy-"))
   const bin = path.join(dir, "bin")
   const log = path.join(dir, "called")
   await mkdir(bin)
   const record = `#!/bin/sh\nprintf '%s\\n' "$0 $*" >> ${JSON.stringify(log)}\n`
+  const vercelStdoutPath = path.join(bin, "vercel-stdout")
+  await writeFile(vercelStdoutPath, vercelStdout)
   await writeFile(
     path.join(bin, "vercel"),
-    `${record}printf '%s\\n' '{"url":"patio.example"}'\n`,
+    `${record}cat ${JSON.stringify(vercelStdoutPath)}\n`,
   )
   await writeFile(path.join(bin, "fly"), record)
   await writeFile(path.join(bin, "npm"), record)
@@ -98,6 +100,36 @@ test("deploy publishes the page and the API and then applies pending SQL", async
     "curl --fail --silent --show-error --max-time 30 https://patio.example",
     "curl --fail --silent --show-error --max-time 30 https://tajo.fly.dev/health",
   ])
+  expect(await readFile(log, "utf8")).toContain("fly.deploy.toml")
+})
+
+test("deploy drops the quote and comma the CLI leaves on the page URL", async () => {
+  const { bin, log } = await sandboxPath(
+    'note {not json}\n\u001b[32mAliased\u001b[0m https://patio.example",\n',
+  )
+
+  const result = await run(bin)
+
+  expect(result.code).toBe(0)
+  expect(await readFile(log, "utf8")).toContain(
+    "fly secrets set DATABASE_URL=postgresql://tajo@example/tajo WEB_ORIGIN=https://patio.example --app tajo --stage",
+  )
+  expect(await readFile(log, "utf8")).toContain(
+    "curl --fail --silent --show-error --max-time 30 https://patio.example",
+  )
+})
+
+test("deploy reads the production page URL from the CLI text", async () => {
+  const { bin, log } = await sandboxPath(
+    "Production https://tajo-preview.vercel.app\nAliased https://patio.example",
+  )
+
+  const result = await run(bin)
+
+  expect(result.code).toBe(0)
+  expect(await readFile(log, "utf8")).toContain(
+    "fly secrets set DATABASE_URL=postgresql://tajo@example/tajo WEB_ORIGIN=https://patio.example --app tajo --stage",
+  )
 })
 
 let pool: Pool

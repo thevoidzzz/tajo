@@ -42,18 +42,29 @@ process.stdin.on("data", (chunk) => {
   raw += chunk;
 });
 process.stdin.on("end", () => {
-  let json;
-  try {
-    json = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-  } catch {
-    process.exit(1);
+  const cleaned = raw.replace(/\u001b\[[0-9;]*m/g, "");
+  const absolute = (host) =>
+    host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
+  let page = "";
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try {
+      const json = JSON.parse(cleaned.slice(start, end + 1));
+      const alias = Array.isArray(json.alias)
+        ? json.alias.find((item) => typeof item === "string" && item !== "")
+        : "";
+      const host = alias || json.url;
+      if (typeof host === "string" && host !== "") page = absolute(host);
+    } catch {
+      page = "";
+    }
   }
-  const alias = Array.isArray(json.alias)
-    ? json.alias.find((item) => typeof item === "string" && item !== "")
-    : "";
-  const host = alias || json.url;
-  if (typeof host !== "string" || host === "") process.exit(1);
-  const page = host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
+  if (!page) {
+    const matches = cleaned.match(/https?:\/\/\S+/g);
+    if (matches && matches.length) page = matches[matches.length - 1].replace(/[",);.\]]+$/, "");
+  }
+  if (!page) process.exit(1);
   process.stdout.write(page);
 });
 '
@@ -133,7 +144,7 @@ if ! "$fly" status --app "$FLY_APP" >/dev/null 2>&1; then
   "$fly" apps create "$FLY_APP"
 fi
 "$fly" secrets set "DATABASE_URL=${DATABASE_URL}" "WEB_ORIGIN=${page_url}" --app "$FLY_APP" --stage
-config=$(mktemp)
+config="$(pwd)/fly.deploy.toml"
 trap 'rm -f "$config"' EXIT
 sed "s/^app = .*/app = \"${FLY_APP}\"/" fly.toml > "$config"
 "$fly" deploy --remote-only --ha=false --now --app "$FLY_APP" --config "$config"

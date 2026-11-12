@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.local
 .vercel/
+fly.deploy.toml
 coverage/
 .DS_Store
