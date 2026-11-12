@@ -57,10 +57,14 @@ La página queda en http://localhost:8080 y la API en http://localhost:3001. `do
 
 Si está completo, publica la página, publica la imagen de la API, aplica el SQL pendiente y comprueba las dos URLs. Una segunda corrida no repite una migración ya aplicada. Si `/health` falla después de publicar la API, vuelve a la imagen anterior y sale con error. El esquema se queda.
 
+## En línea
+
+La página está en https://tajo-eta.vercel.app. La API está en https://tajo-thevoidzzz.fly.dev.
+
 ## Herramientas
 
-Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y, cuando exista, el comando de despliegue.
+Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y `./deploy.sh`.
 
 ## Cambios
 
-Un cambio entra por pull request contra `main`. El check `test` tiene que pasar antes del merge cuando el workflow ya esté en el repositorio.
+Un cambio entra por pull request contra `main`. El check `test` tiene que pasar antes del merge.
