@@ -55,7 +55,7 @@ La página queda en http://localhost:8080 y la API en http://localhost:3001. `do
 
 `./deploy.sh` revisa `fly`, `vercel`, `node`, `curl` y las variables de `.env.example`. Si falta algo, nombra el paso `preflight` y sale con error, sin publicar.
 
-Si está completo, publica la página, publica la imagen de la API, aplica el SQL pendiente y comprueba las dos URLs. Una segunda corrida no repite una migración ya aplicada.
+Si está completo, publica la página, publica la imagen de la API, aplica el SQL pendiente y comprueba las dos URLs. Una segunda corrida no repite una migración ya aplicada. Si `/health` falla después de publicar la API, vuelve a la imagen anterior y sale con error. El esquema se queda.
 
 ## Herramientas
 
