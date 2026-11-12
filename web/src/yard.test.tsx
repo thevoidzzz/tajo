@@ -74,7 +74,9 @@ test("a maintenance recorded from the yard keeps its place in the history", () =
   fireEvent.click(screen.getByRole("button", { name: "Anotar mantenimiento" }))
 
   expect(onMaintain).toHaveBeenCalledWith("1")
-  expect(screen.getByText("Anotado en 250 h")).toBeTruthy()
+  const note = screen.getByText("Anotado en 250 h")
+  expect(note.closest(".notes")).toBeTruthy()
+  expect(note.closest("form")).toBeNull()
 })
 
 test("a horometer edited below the cycle stays on the machine", async () => {
