@@ -68,7 +68,14 @@ export function createApp(pool: Pool): Express {
       next()
     })
   }
-  app.use(express.json())
+  app.use((req, res, next) => {
+    const started = Date.now()
+    res.on("finish", () => {
+      console.log(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - started}ms`)
+    })
+    next()
+  })
+  app.use(express.json({ limit: "8kb" }))
 
   app.get("/health", route(async (_req: Request, res: Response) => {
     try {
@@ -248,11 +255,24 @@ export function createApp(pool: Pool): Express {
   }))
 
   app.use((error: unknown, _req: Request, res: Response, _next: (error: unknown) => void) => {
+    const status = clientBodyStatus(error)
+    if (status) {
+      fail(res, status, "invalid_body")
+      return
+    }
     console.error(error)
     if (!res.headersSent) fail(res, 500, "internal")
   })
 
   return app
+}
+
+function clientBodyStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("type" in error)) return undefined
+  const kind = (error as { type?: unknown }).type
+  if (kind === "entity.too.large") return 413
+  if (kind === "entity.parse.failed") return 400
+  return undefined
 }
 
 function isUniqueViolation(error: unknown): boolean {

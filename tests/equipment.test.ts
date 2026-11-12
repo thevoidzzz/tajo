@@ -26,6 +26,19 @@ afterAll(async () => {
   await pool.end()
 })
 
+test("a body that does not fit is rejected before it reaches the yard", async () => {
+  const app = createApp(pool)
+  const broken = await request(app).post("/equipment").set("Content-Type", "application/json").send("{")
+  const oversized = await request(app)
+    .post("/equipment")
+    .send({ code: "A".repeat(9000), type: "camion", horometerHours: 0 })
+
+  expect(broken.status).toBe(400)
+  expect(broken.body).toEqual({ error: "invalid_body" })
+  expect(oversized.status).toBe(413)
+  expect(oversized.body).toEqual({ error: "invalid_body" })
+})
+
 test("a truck that arrives with 1200 hours is current and the cycle starts there", async () => {
   const response = await request(createApp(pool)).post("/equipment").send({
     code: "CM-014",
