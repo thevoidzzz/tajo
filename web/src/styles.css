@@ -64,9 +64,33 @@ h1 {
   border-top: 1px solid var(--line);
 }
 
-.machine.due {
+.entry.due {
   border-left: 6px solid var(--vest);
   padding-left: 0.75rem;
+}
+
+.actions,
+.edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  padding: 0 0.2rem 0.85rem;
+}
+
+.edit {
+  margin-top: 0;
+}
+
+button.quiet {
+  background: transparent;
+  color: var(--chalk);
+  border-color: var(--line);
+}
+
+.note {
+  margin: 0 0 0.4rem;
+  color: var(--steel);
 }
 
 .code {

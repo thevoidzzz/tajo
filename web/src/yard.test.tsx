@@ -37,6 +37,49 @@ test("the yard lists equipment that requires maintenance first", () => {
   expect(screen.getByText("1 requiere mantenimiento")).toBeTruthy()
 })
 
+test("a maintenance recorded from the yard keeps its place in the history", () => {
+  const onMaintain = vi.fn().mockResolvedValue(undefined)
+  render(
+    <Yard
+      equipment={[due]}
+      history={{ "1": [{ id: "m1", horometerHours: 250 }] }}
+      onCreate={async () => {}}
+      onMaintain={onMaintain}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole("button", { name: "Anotar mantenimiento" }))
+
+  expect(onMaintain).toHaveBeenCalledWith("1")
+  expect(screen.getByText("Anotado en 250 h")).toBeTruthy()
+})
+
+test("a horometer edited below the cycle stays on the machine", async () => {
+  const onUpdate = vi.fn().mockRejectedValue(new Error("horometer_below_cycle"))
+  render(<Yard equipment={[due]} onCreate={async () => {}} onUpdate={onUpdate} />)
+
+  fireEvent.click(screen.getByRole("button", { name: "Cambiar" }))
+  fireEvent.change(screen.getByLabelText("Horómetro de CM-099"), { target: { value: "100" } })
+  fireEvent.click(screen.getByRole("button", { name: "Guardar" }))
+
+  expect(onUpdate).toHaveBeenCalledWith("1", { code: "CM-099", type: "camion", horometerHours: 100 })
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "El horómetro no puede quedar detrás del inicio del ciclo.",
+  )
+  expect(screen.getByText("250 h")).toBeTruthy()
+})
+
+test("removing a machine asks once and then takes it off the yard", () => {
+  const onDelete = vi.fn().mockResolvedValue(undefined)
+  render(<Yard equipment={[current]} onCreate={async () => {}} onDelete={onDelete} />)
+
+  fireEvent.click(screen.getByRole("button", { name: "Sacar del patio" }))
+  expect(onDelete).not.toHaveBeenCalled()
+
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))
+  expect(onDelete).toHaveBeenCalledWith("2")
+})
+
 test("an empty horometer does not add a machine", () => {
   const onCreate = vi.fn()
   render(<Yard equipment={[]} onCreate={onCreate} />)
