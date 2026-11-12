@@ -26,6 +26,25 @@ test("health is ok when the database answers", async () => {
   expect(response.body).toEqual({ status: "ok" })
 })
 
+test("a configured page origin can call the api", async () => {
+  const previous = process.env.WEB_ORIGIN
+  process.env.WEB_ORIGIN = "http://localhost:8080"
+  try {
+    const app = createApp(pool)
+    const health = await request(app).get("/health")
+    const preflight = await request(app)
+      .options("/equipment")
+      .set("Origin", "http://localhost:8080")
+      .set("Access-Control-Request-Method", "POST")
+
+    expect(health.headers["access-control-allow-origin"]).toBe("http://localhost:8080")
+    expect(preflight.status).toBe(204)
+  } finally {
+    if (previous === undefined) delete process.env.WEB_ORIGIN
+    else process.env.WEB_ORIGIN = previous
+  }
+})
+
 test("health is unavailable when the database does not answer", async () => {
   const closed = new pg.Pool({
     connectionString: "postgresql://tajo@127.0.0.1:1/tajo",

@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     environment: "node",
     fileParallelism: false,
+    exclude: ["web/**", "**/node_modules/**", "**/dist/**"],
   },
 })
