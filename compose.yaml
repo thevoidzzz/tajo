@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: tajo
+      POSTGRES_DB: tajo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tajo"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://tajo@postgres:5432/tajo
+      WEB_ORIGIN: http://localhost:8080
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: http://localhost:3001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api

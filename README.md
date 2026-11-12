@@ -43,6 +43,14 @@ npm run dev
 
 http://localhost:5173 lista el patio, con quien requiere mantenimiento primero. Desde ahí se da de alta, se cambia un equipo, se anota un mantenimiento y se saca del patio. Vite reenvía `/equipment` a la API local.
 
+## Local con Docker
+
+```bash
+docker compose up --build
+```
+
+La página queda en http://localhost:8080 y la API en http://localhost:3001. `docker compose down` las apaga.
+
 ## Herramientas
 
 Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y, cuando exista, el comando de despliegue.
