@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-http://localhost:5173 lista el patio, con quien requiere mantenimiento primero. Desde ahí se da de alta, se cambia un equipo, se anota un mantenimiento y se saca del patio. Vite reenvía `/equipment` a la API local.
+http://localhost:5173 lista el patio, con quien requiere mantenimiento primero. Quien está al día muestra las horas que faltan para el corte. Desde ahí se da de alta, se cambia un equipo, se anota un mantenimiento y se saca del patio. Vite reenvía `/equipment` a la API local.
 
 ## Local con Docker
 

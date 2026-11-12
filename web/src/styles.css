@@ -104,6 +104,11 @@ button.quiet {
   font-variant-numeric: tabular-nums;
 }
 
+.left {
+  display: block;
+  color: var(--steel);
+}
+
 .status {
   color: var(--steel);
 }
