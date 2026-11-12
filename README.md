@@ -51,6 +51,10 @@ docker compose up --build
 
 La página queda en http://localhost:8080 y la API en http://localhost:3001. `docker compose down` las apaga.
 
+## Despliegue
+
+`./deploy.sh` revisa `fly`, `vercel`, `node`, `curl` y las variables de `.env.example`. Si falta algo, nombra el paso `preflight` y sale con error, sin publicar.
+
 ## Herramientas
 
 Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y, cuando exista, el comando de despliegue.
