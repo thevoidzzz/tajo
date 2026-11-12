@@ -161,6 +161,45 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.skeleton {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.skeleton span {
+  display: block;
+  height: 0.9rem;
+  width: 42%;
+  background: var(--line);
+}
+
+.skeleton span:first-child {
+  width: 8.5rem;
+  height: 2rem;
+}
+
+.skeleton span:nth-child(2) {
+  width: 6rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton span {
+    animation: wait 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes wait {
+  50% {
+    opacity: 0.4;
+  }
+}
+
 [role="alert"] {
   margin: 0.9rem 0 0;
 }

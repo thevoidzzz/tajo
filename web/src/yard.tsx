@@ -56,15 +56,18 @@ export function Yard({
   const [type, setType] = useState<Equipment["type"]>("camion")
   const [horometer, setHorometer] = useState("")
   const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
   const dueCount = equipment.filter((item) => item.status === "Requiere mantenimiento").length
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (saving) return
     const hours = Number(horometer)
     if (code.trim() === "" || horometer.trim() === "" || !Number.isInteger(hours) || hours < 0) {
       setError("Revisa el código, el tipo y el horómetro.")
       return
     }
+    setSaving(true)
     try {
       await onCreate({ code: code.trim(), type, horometerHours: hours })
       setCode("")
@@ -72,6 +75,8 @@ export function Yard({
       setError("")
     } catch (caught) {
       setError(message(caught))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -99,11 +104,15 @@ export function Yard({
       <form onSubmit={submit}>
         <label>
           Código
-          <input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" />
+          <input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" disabled={saving} />
         </label>
         <label>
           Tipo
-          <select value={type} onChange={(event) => setType(event.target.value as Equipment["type"])}>
+          <select
+            value={type}
+            onChange={(event) => setType(event.target.value as Equipment["type"])}
+            disabled={saving}
+          >
             <option value="camion">Camión</option>
             <option value="excavadora">Excavadora</option>
             <option value="perforadora">Perforadora</option>
@@ -111,9 +120,16 @@ export function Yard({
         </label>
         <label>
           Horómetro
-          <input value={horometer} onChange={(event) => setHorometer(event.target.value)} inputMode="numeric" />
+          <input
+            value={horometer}
+            onChange={(event) => setHorometer(event.target.value)}
+            inputMode="numeric"
+            disabled={saving}
+          />
         </label>
-        <button type="submit">Dar de alta</button>
+        <button type="submit" disabled={saving} aria-busy={saving}>
+          {saving ? "Dando de alta…" : "Dar de alta"}
+        </button>
       </form>
       {error ? <p role="alert">{error}</p> : null}
     </main>
@@ -139,23 +155,37 @@ function Machine({
   const [type, setType] = useState(item.type)
   const [horometer, setHorometer] = useState(String(item.horometerHours))
   const [error, setError] = useState("")
+  const [busy, setBusy] = useState<"" | "maintain" | "save" | "delete">("")
   const due = item.status === "Requiere mantenimiento"
   const left = item.cycleStartHours + item.intervalHours - item.horometerHours
 
   async function save(event: FormEvent) {
     event.preventDefault()
+    if (busy) return
     const hours = Number(horometer)
     if (code.trim() === "" || horometer.trim() === "" || !Number.isInteger(hours) || hours < 0) {
       setError("Revisa el código, el tipo y el horómetro.")
       return
     }
+    setBusy("save")
     try {
       await onUpdate(item.id, { code: code.trim(), type, horometerHours: hours })
       setEditing(false)
       setError("")
     } catch (caught) {
       setError(message(caught))
+    } finally {
+      setBusy("")
     }
+  }
+
+  function run(kind: "maintain" | "delete", action: () => Promise<void>) {
+    if (busy) return
+    setBusy(kind)
+    void action()
+      .then(() => setError(""))
+      .catch((caught: unknown) => setError(message(caught)))
+      .finally(() => setBusy(""))
   }
 
   return (
@@ -175,16 +205,17 @@ function Machine({
         <button
           type="button"
           className={due ? undefined : "quiet"}
-          onClick={() => {
-            void onMaintain(item.id).catch((caught) => setError(message(caught)))
-          }}
+          disabled={busy !== ""}
+          aria-busy={busy === "maintain"}
+          onClick={() => run("maintain", () => onMaintain(item.id))}
         >
-          Anotar mantenimiento
+          {busy === "maintain" ? "Anotando…" : "Anotar mantenimiento"}
         </button>
         {editing ? null : (
           <button
             type="button"
             className="quiet"
+            disabled={busy !== ""}
             onClick={() => {
               setCode(item.code)
               setType(item.type)
@@ -200,18 +231,18 @@ function Machine({
           <>
             <button
               type="button"
-              onClick={() => {
-                void onDelete(item.id).catch((caught) => setError(message(caught)))
-              }}
+              disabled={busy !== ""}
+              aria-busy={busy === "delete"}
+              onClick={() => run("delete", () => onDelete(item.id))}
             >
-              Confirmar
+              {busy === "delete" ? "Sacando…" : "Confirmar"}
             </button>
-            <button type="button" className="quiet" onClick={() => setConfirming(false)}>
+            <button type="button" className="quiet" disabled={busy !== ""} onClick={() => setConfirming(false)}>
               Cancelar
             </button>
           </>
         ) : (
-          <button type="button" className="quiet" onClick={() => setConfirming(true)}>
+          <button type="button" className="quiet" disabled={busy !== ""} onClick={() => setConfirming(true)}>
             Sacar del patio
           </button>
         )}
@@ -220,13 +251,19 @@ function Machine({
         <form className="edit" onSubmit={save}>
           <label>
             Código
-            <input aria-label={`Código de ${item.code}`} value={code} onChange={(event) => setCode(event.target.value)} />
+            <input
+              aria-label={`Código de ${item.code}`}
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              disabled={busy !== ""}
+            />
           </label>
           <label>
             Tipo
             <select
               aria-label={`Tipo de ${item.code}`}
               value={type}
+              disabled={busy !== ""}
               onChange={(event) => setType(event.target.value as Equipment["type"])}
             >
               <option value="camion">Camión</option>
@@ -241,9 +278,12 @@ function Machine({
               value={horometer}
               onChange={(event) => setHorometer(event.target.value)}
               inputMode="numeric"
+              disabled={busy !== ""}
             />
           </label>
-          <button type="submit">Guardar</button>
+          <button type="submit" disabled={busy !== ""} aria-busy={busy === "save"}>
+            {busy === "save" ? "Guardando…" : "Guardar"}
+          </button>
         </form>
       ) : null}
       {notes.map((note) => (

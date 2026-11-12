@@ -33,7 +33,19 @@ export function Page() {
   }, [])
 
   if (loadError) return <p role="alert">No se pudo leer el patio.</p>
-  if (!equipment) return <p>Cargando el patio.</p>
+  if (!equipment) {
+    return (
+      <main className="board" aria-busy="true">
+        <h1>Patio</h1>
+        <p role="status">Cargando el patio.</p>
+        <div className="skeleton" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </main>
+    )
+  }
 
   return (
     <Yard
