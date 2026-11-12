@@ -8,6 +8,8 @@ const due: Equipment = {
   code: "CM-099",
   type: "camion",
   horometerHours: 250,
+  cycleStartHours: 0,
+  intervalHours: 250,
   status: "Requiere mantenimiento",
 }
 
@@ -16,11 +18,30 @@ const current: Equipment = {
   code: "EX-001",
   type: "excavadora",
   horometerHours: 0,
+  cycleStartHours: 0,
+  intervalHours: 500,
   status: "Al día",
 }
 
 afterEach(() => {
   cleanup()
+})
+
+test("the yard shows the hours left until the cut", () => {
+  const truck: Equipment = {
+    id: "3",
+    code: "CM-014",
+    type: "camion",
+    horometerHours: 1400,
+    cycleStartHours: 1200,
+    intervalHours: 250,
+    status: "Al día",
+  }
+
+  render(<Yard equipment={[due, truck]} onCreate={async () => {}} />)
+
+  expect(screen.getByText("Faltan 50 h")).toBeTruthy()
+  expect(screen.getAllByText(/Faltan/).length).toBe(1)
 })
 
 test("the yard lists equipment that requires maintenance first", () => {

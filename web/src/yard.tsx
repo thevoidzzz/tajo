@@ -5,6 +5,8 @@ export type Equipment = {
   code: string
   type: "camion" | "excavadora" | "perforadora"
   horometerHours: number
+  cycleStartHours: number
+  intervalHours: number
   status: "Requiere mantenimiento" | "Al día"
 }
 
@@ -138,6 +140,7 @@ function Machine({
   const [horometer, setHorometer] = useState(String(item.horometerHours))
   const [error, setError] = useState("")
   const due = item.status === "Requiere mantenimiento"
+  const left = item.cycleStartHours + item.intervalHours - item.horometerHours
 
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -160,7 +163,10 @@ function Machine({
       <div className="machine">
         <span className="code">{item.code}</span>
         <span className="kind">{typeName[item.type]}</span>
-        <span className="hours">{item.horometerHours} h</span>
+        <span className="hours">
+          {item.horometerHours} h
+          {left > 0 ? <span className="left">{left === 1 ? "Falta 1 h" : `Faltan ${left} h`}</span> : null}
+        </span>
         <span className={due ? "status due" : "status"}>{item.status}</span>
       </div>
       <div className="actions">
