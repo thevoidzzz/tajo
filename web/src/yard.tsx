@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useId, useState, type FormEvent } from "react"
 
 export type Equipment = {
   id: string
@@ -25,6 +25,22 @@ const typeName: Record<Equipment["type"], string> = {
   camion: "Camión",
   excavadora: "Excavadora",
   perforadora: "Perforadora",
+}
+
+const hourLimit = 2_147_483_647
+const codePattern = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/
+
+function reading(code: string, horometer: string): { code: string; horometerHours: number } | string {
+  const trimmed = code.trim()
+  if (!codePattern.test(trimmed) || trimmed.length > 32) {
+    return "El código usa letras, números y guiones, hasta 32."
+  }
+  if (!/^\d+$/.test(horometer.trim())) {
+    return "El horómetro se anota en horas enteras, solo números."
+  }
+  const hours = Number(horometer)
+  if (hours > hourLimit) return "El horómetro no admite tantas horas."
+  return { code: trimmed, horometerHours: hours }
 }
 
 function message(caught: unknown): string {
@@ -57,19 +73,24 @@ export function Yard({
   const [horometer, setHorometer] = useState("")
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
+  const codeId = useId()
+  const codeHint = useId()
+  const typeId = useId()
+  const hoursId = useId()
+  const hoursHint = useId()
   const dueCount = equipment.filter((item) => item.status === "Requiere mantenimiento").length
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (saving) return
-    const hours = Number(horometer)
-    if (code.trim() === "" || horometer.trim() === "" || !Number.isInteger(hours) || hours < 0) {
-      setError("Revisa el código, el tipo y el horómetro.")
+    const parsed = reading(code, horometer)
+    if (typeof parsed === "string") {
+      setError(parsed)
       return
     }
     setSaving(true)
     try {
-      await onCreate({ code: code.trim(), type, horometerHours: hours })
+      await onCreate({ ...parsed, type })
       setCode("")
       setHorometer("")
       setError("")
@@ -101,14 +122,25 @@ export function Yard({
           ))}
         </ul>
       )}
-      <form onSubmit={submit}>
-        <label>
-          Código
-          <input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" disabled={saving} />
-        </label>
-        <label>
-          Tipo
+      <form onSubmit={submit} noValidate>
+        <div className="field">
+          <label htmlFor={codeId}>Código</label>
+          <input
+            id={codeId}
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            maxLength={32}
+            disabled={saving}
+            aria-describedby={codeHint}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={typeId}>Tipo</label>
           <select
+            id={typeId}
             value={type}
             onChange={(event) => setType(event.target.value as Equipment["type"])}
             disabled={saving}
@@ -117,19 +149,26 @@ export function Yard({
             <option value="excavadora">Excavadora</option>
             <option value="perforadora">Perforadora</option>
           </select>
-        </label>
-        <label>
-          Horómetro
+        </div>
+        <div className="field">
+          <label htmlFor={hoursId}>Horómetro</label>
           <input
+            id={hoursId}
             value={horometer}
             onChange={(event) => setHorometer(event.target.value)}
             inputMode="numeric"
+            maxLength={10}
             disabled={saving}
+            aria-describedby={hoursHint}
           />
-        </label>
+        </div>
         <button type="submit" disabled={saving} aria-busy={saving}>
           {saving ? "Dando de alta…" : "Dar de alta"}
         </button>
+        <p className="hint">
+          <span id={codeHint}>Código: letras, números y guiones, hasta 32.</span>{" "}
+          <span id={hoursHint}>Horómetro: horas enteras, solo números.</span>
+        </p>
       </form>
       {error ? <p role="alert">{error}</p> : null}
     </main>
@@ -156,20 +195,25 @@ function Machine({
   const [horometer, setHorometer] = useState(String(item.horometerHours))
   const [error, setError] = useState("")
   const [busy, setBusy] = useState<"" | "maintain" | "save" | "delete">("")
+  const codeId = useId()
+  const codeHint = useId()
+  const typeId = useId()
+  const hoursId = useId()
+  const hoursHint = useId()
   const due = item.status === "Requiere mantenimiento"
   const left = item.cycleStartHours + item.intervalHours - item.horometerHours
 
   async function save(event: FormEvent) {
     event.preventDefault()
     if (busy) return
-    const hours = Number(horometer)
-    if (code.trim() === "" || horometer.trim() === "" || !Number.isInteger(hours) || hours < 0) {
-      setError("Revisa el código, el tipo y el horómetro.")
+    const parsed = reading(code, horometer)
+    if (typeof parsed === "string") {
+      setError(parsed)
       return
     }
     setBusy("save")
     try {
-      await onUpdate(item.id, { code: code.trim(), type, horometerHours: hours })
+      await onUpdate(item.id, { ...parsed, type })
       setEditing(false)
       setError("")
     } catch (caught) {
@@ -248,19 +292,26 @@ function Machine({
         )}
       </div>
       {editing ? (
-        <form className="edit" onSubmit={save}>
-          <label>
-            Código
+        <form className="edit" onSubmit={save} noValidate>
+          <div className="field">
+            <label htmlFor={codeId}>Código</label>
             <input
+              id={codeId}
               aria-label={`Código de ${item.code}`}
               value={code}
               onChange={(event) => setCode(event.target.value)}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              maxLength={32}
               disabled={busy !== ""}
+              aria-describedby={codeHint}
             />
-          </label>
-          <label>
-            Tipo
+          </div>
+          <div className="field">
+            <label htmlFor={typeId}>Tipo</label>
             <select
+              id={typeId}
               aria-label={`Tipo de ${item.code}`}
               value={type}
               disabled={busy !== ""}
@@ -270,20 +321,27 @@ function Machine({
               <option value="excavadora">Excavadora</option>
               <option value="perforadora">Perforadora</option>
             </select>
-          </label>
-          <label>
-            Horómetro
+          </div>
+          <div className="field">
+            <label htmlFor={hoursId}>Horómetro</label>
             <input
+              id={hoursId}
               aria-label={`Horómetro de ${item.code}`}
               value={horometer}
               onChange={(event) => setHorometer(event.target.value)}
               inputMode="numeric"
+              maxLength={10}
               disabled={busy !== ""}
+              aria-describedby={hoursHint}
             />
-          </label>
+          </div>
           <button type="submit" disabled={busy !== ""} aria-busy={busy === "save"}>
             {busy === "save" ? "Guardando…" : "Guardar"}
           </button>
+          <p className="hint">
+            <span id={codeHint}>Código: letras, números y guiones, hasta 32.</span>{" "}
+            <span id={hoursHint}>Horómetro: horas enteras, solo números.</span>
+          </p>
         </form>
       ) : null}
       {notes.map((note) => (

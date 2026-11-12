@@ -125,8 +125,24 @@ form {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.9fr) auto;
   gap: 0.75rem 1rem;
-  align-items: end;
+  align-items: start;
   margin-top: 1.25rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--steel);
+  font-size: 0.875rem;
+}
+
+form > button {
+  margin-top: 1.65rem;
 }
 
 label {
@@ -241,5 +257,6 @@ button:disabled {
 
   form button[type="submit"] {
     width: 100%;
+    margin-top: 0;
   }
 }

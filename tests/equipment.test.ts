@@ -128,6 +128,27 @@ test("a repeated code is rejected", async () => {
   expect(again.body.error).toBe("duplicate_code")
 })
 
+test("a script, a long code, or too many hours never enter the yard", async () => {
+  const app = createApp(pool)
+  const rejected = [
+    { code: "<script>alert(1)</script>", type: "camion", horometerHours: 0 },
+    { code: "CM-014'; DROP TABLE equipment;--", type: "camion", horometerHours: 0 },
+    { code: "A".repeat(33), type: "camion", horometerHours: 0 },
+    { code: "CM-014", type: "camion", horometerHours: "1200" },
+    { code: "CM-014", type: "camion", horometerHours: 2_147_483_648 },
+  ]
+
+  for (const body of rejected) {
+    const response = await request(app).post("/equipment").send(body)
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: "invalid_body" })
+  }
+
+  const listed = await request(app).get("/equipment")
+  expect(listed.status).toBe(200)
+  expect(listed.body).toEqual([])
+})
+
 test("hours have to be a whole number that is not negative", async () => {
   const app = createApp(pool)
   const negative = await request(app).post("/equipment").send({

@@ -9,7 +9,7 @@ const code = z
   .min(1)
   .max(32)
   .regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/)
-const horometerHours = z.number().int().nonnegative()
+const horometerHours = z.number().int().nonnegative().max(2_147_483_647)
 
 const createBody = z.object({
   code,
