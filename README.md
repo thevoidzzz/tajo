@@ -31,6 +31,18 @@ DATABASE_URL=postgresql://tajo@localhost:5435/tajo npm test
 
 `GET /health` responde si la API llega a la base. `POST /equipment` da de alta. `PATCH /equipment/:id` cambia código, tipo u horómetro. Un horómetro por debajo del inicio del ciclo se rechaza. `DELETE /equipment/:id` saca el equipo del patio y su historial. `POST /equipment/:id/maintenance` anota un mantenimiento en el horómetro actual y abre el ciclo. `GET /equipment/:id/maintenance` devuelve ese historial. `GET /equipment` lista el patio, con quien requiere mantenimiento primero.
 
+## Página
+
+Con la API en marcha (`npm run build` y `DATABASE_URL=postgresql://tajo@localhost:5435/tajo npm start`):
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+http://localhost:5173 lista el patio, con quien requiere mantenimiento primero, y da de alta un equipo. Vite reenvía `/equipment` a la API local.
+
 ## Herramientas
 
 Este repositorio se escribe con Cursor. Quien lo mantiene tiene que poder explicar el ciclo, la API y, cuando exista, el comando de despliegue.
