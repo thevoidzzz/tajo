@@ -158,6 +158,28 @@ test("a code is shown as text", () => {
   expect(screen.getByText("<script>alert(1)</script>")).toBeTruthy()
 })
 
+test("clicking a field shows green when it fits and red when dar de alta finds it wrong", () => {
+  const onCreate = vi.fn()
+  render(<Yard equipment={[]} onCreate={onCreate} />)
+  const code = screen.getByLabelText("Código")
+  const hours = screen.getByLabelText("Horómetro")
+
+  fireEvent.focus(code)
+  expect(screen.getByText("El código usa letras, números y guiones, hasta 32.")).toBeTruthy()
+  expect(code.className).not.toContain("bad")
+
+  fireEvent.change(code, { target: { value: "CM-014" } })
+  expect(code.className).toContain("good")
+  expect(screen.getByText("El código sirve.")).toBeTruthy()
+
+  fireEvent.change(hours, { target: { value: "1200 h" } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+
+  expect(onCreate).not.toHaveBeenCalled()
+  expect(hours.className).toContain("bad")
+  expect(screen.getByRole("alert").textContent).toBe("El horómetro se anota en horas enteras, solo números.")
+})
+
 test("giving a machine a code, a type and a horometer adds it to the yard", async () => {
   const onCreate = vi.fn().mockResolvedValue(undefined)
   render(<Yard equipment={[]} onCreate={onCreate} />)

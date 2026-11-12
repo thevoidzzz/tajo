@@ -29,18 +29,88 @@ const typeName: Record<Equipment["type"], string> = {
 
 const hourLimit = 2_147_483_647
 const codePattern = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/
+const codeRule = "El código usa letras, números y guiones, hasta 32."
+const hoursRule = "El horómetro se anota en horas enteras, solo números."
+
+function codeProblem(code: string): string {
+  const trimmed = code.trim()
+  if (!codePattern.test(trimmed) || trimmed.length > 32) return codeRule
+  return ""
+}
+
+function hoursProblem(horometer: string): string {
+  if (!/^\d+$/.test(horometer.trim())) return hoursRule
+  if (Number(horometer) > hourLimit) return "El horómetro no admite tantas horas."
+  return ""
+}
 
 function reading(code: string, horometer: string): { code: string; horometerHours: number } | string {
-  const trimmed = code.trim()
-  if (!codePattern.test(trimmed) || trimmed.length > 32) {
-    return "El código usa letras, números y guiones, hasta 32."
+  const codeIssue = codeProblem(code)
+  if (codeIssue) return codeIssue
+  const hoursIssue = hoursProblem(horometer)
+  if (hoursIssue) return hoursIssue
+  return { code: code.trim(), horometerHours: Number(horometer) }
+}
+
+type Tone = "" | "hint" | "good" | "bad"
+
+function tone(value: string, issue: string, seen: boolean, submitted: boolean): Tone {
+  if (!seen && !submitted) return ""
+  if (!issue) return "good"
+  if (submitted || value.trim() !== "") return "bad"
+  return "hint"
+}
+
+function useMarks(code: string, horometer: string) {
+  const [codeSeen, setCodeSeen] = useState(false)
+  const [hoursSeen, setHoursSeen] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [codeFault, setCodeFault] = useState("")
+  const [hoursFault, setHoursFault] = useState("")
+  const codeIssue = codeFault || codeProblem(code)
+  const hoursIssue = hoursFault || hoursProblem(horometer)
+
+  return {
+    codeTone: tone(code, codeIssue, codeSeen, submitted),
+    hoursTone: tone(horometer, hoursIssue, hoursSeen, submitted),
+    codeText: codeFault || (codeProblem(code) ? codeRule : "El código sirve."),
+    hoursText: hoursFault || hoursProblem(horometer) || "Horas enteras.",
+    seeCode: () => setCodeSeen(true),
+    seeHours: () => setHoursSeen(true),
+    editCode: () => setCodeFault(""),
+    editHours: () => setHoursFault(""),
+    reject: () => setSubmitted(true),
+    fail(caught: unknown) {
+      if (!(caught instanceof Error)) return false
+      if (caught.message === "duplicate_code") {
+        setCodeFault("Ese código ya está en el patio.")
+        setSubmitted(true)
+        return true
+      }
+      if (caught.message === "horometer_below_cycle") {
+        setHoursFault("El horómetro no puede quedar detrás del inicio del ciclo.")
+        setSubmitted(true)
+        return true
+      }
+      return false
+    },
+    reset() {
+      setSubmitted(false)
+      setCodeSeen(false)
+      setHoursSeen(false)
+      setCodeFault("")
+      setHoursFault("")
+    },
   }
-  if (!/^\d+$/.test(horometer.trim())) {
-    return "El horómetro se anota en horas enteras, solo números."
-  }
-  const hours = Number(horometer)
-  if (hours > hourLimit) return "El horómetro no admite tantas horas."
-  return { code: trimmed, horometerHours: hours }
+}
+
+function FieldNote({ id, tone: fieldTone, text }: { id: string; tone: Tone; text: string }) {
+  if (!fieldTone) return null
+  return (
+    <p id={id} className={`mark ${fieldTone}`} role={fieldTone === "bad" ? "alert" : undefined}>
+      {text}
+    </p>
+  )
 }
 
 function message(caught: unknown): string {
@@ -78,6 +148,7 @@ export function Yard({
   const typeId = useId()
   const hoursId = useId()
   const hoursHint = useId()
+  const marks = useMarks(code, horometer)
   const dueCount = equipment.filter((item) => item.status === "Requiere mantenimiento").length
 
   async function submit(event: FormEvent) {
@@ -85,7 +156,7 @@ export function Yard({
     if (saving) return
     const parsed = reading(code, horometer)
     if (typeof parsed === "string") {
-      setError(parsed)
+      marks.reject()
       return
     }
     setSaving(true)
@@ -94,8 +165,9 @@ export function Yard({
       setCode("")
       setHorometer("")
       setError("")
+      marks.reset()
     } catch (caught) {
-      setError(message(caught))
+      if (!marks.fail(caught)) setError(message(caught))
     } finally {
       setSaving(false)
     }
@@ -127,15 +199,23 @@ export function Yard({
           <label htmlFor={codeId}>Código</label>
           <input
             id={codeId}
+            className={marks.codeTone === "good" || marks.codeTone === "bad" ? marks.codeTone : undefined}
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onFocus={marks.seeCode}
+            onChange={(event) => {
+              setCode(event.target.value)
+              marks.seeCode()
+              marks.editCode()
+            }}
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
             maxLength={32}
             disabled={saving}
+            aria-invalid={marks.codeTone === "bad"}
             aria-describedby={codeHint}
           />
+          <FieldNote id={codeHint} tone={marks.codeTone} text={marks.codeText} />
         </div>
         <div className="field">
           <label htmlFor={typeId}>Tipo</label>
@@ -154,21 +234,25 @@ export function Yard({
           <label htmlFor={hoursId}>Horómetro</label>
           <input
             id={hoursId}
+            className={marks.hoursTone === "good" || marks.hoursTone === "bad" ? marks.hoursTone : undefined}
             value={horometer}
-            onChange={(event) => setHorometer(event.target.value)}
+            onFocus={marks.seeHours}
+            onChange={(event) => {
+              setHorometer(event.target.value)
+              marks.seeHours()
+              marks.editHours()
+            }}
             inputMode="numeric"
             maxLength={10}
             disabled={saving}
+            aria-invalid={marks.hoursTone === "bad"}
             aria-describedby={hoursHint}
           />
+          <FieldNote id={hoursHint} tone={marks.hoursTone} text={marks.hoursText} />
         </div>
         <button type="submit" disabled={saving} aria-busy={saving}>
           {saving ? "Dando de alta…" : "Dar de alta"}
         </button>
-        <p className="hint">
-          <span id={codeHint}>Código: letras, números y guiones, hasta 32.</span>{" "}
-          <span id={hoursHint}>Horómetro: horas enteras, solo números.</span>
-        </p>
       </form>
       {error ? <p role="alert">{error}</p> : null}
     </main>
@@ -200,6 +284,7 @@ function Machine({
   const typeId = useId()
   const hoursId = useId()
   const hoursHint = useId()
+  const marks = useMarks(code, horometer)
   const due = item.status === "Requiere mantenimiento"
   const left = item.cycleStartHours + item.intervalHours - item.horometerHours
 
@@ -208,7 +293,7 @@ function Machine({
     if (busy) return
     const parsed = reading(code, horometer)
     if (typeof parsed === "string") {
-      setError(parsed)
+      marks.reject()
       return
     }
     setBusy("save")
@@ -216,8 +301,9 @@ function Machine({
       await onUpdate(item.id, { ...parsed, type })
       setEditing(false)
       setError("")
+      marks.reset()
     } catch (caught) {
-      setError(message(caught))
+      if (!marks.fail(caught)) setError(message(caught))
     } finally {
       setBusy("")
     }
@@ -297,16 +383,24 @@ function Machine({
             <label htmlFor={codeId}>Código</label>
             <input
               id={codeId}
+              className={marks.codeTone === "good" || marks.codeTone === "bad" ? marks.codeTone : undefined}
               aria-label={`Código de ${item.code}`}
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onFocus={marks.seeCode}
+              onChange={(event) => {
+                setCode(event.target.value)
+                marks.seeCode()
+                marks.editCode()
+              }}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
               maxLength={32}
               disabled={busy !== ""}
+              aria-invalid={marks.codeTone === "bad"}
               aria-describedby={codeHint}
             />
+            <FieldNote id={codeHint} tone={marks.codeTone} text={marks.codeText} />
           </div>
           <div className="field">
             <label htmlFor={typeId}>Tipo</label>
@@ -326,22 +420,26 @@ function Machine({
             <label htmlFor={hoursId}>Horómetro</label>
             <input
               id={hoursId}
+              className={marks.hoursTone === "good" || marks.hoursTone === "bad" ? marks.hoursTone : undefined}
               aria-label={`Horómetro de ${item.code}`}
               value={horometer}
-              onChange={(event) => setHorometer(event.target.value)}
+              onFocus={marks.seeHours}
+              onChange={(event) => {
+                setHorometer(event.target.value)
+                marks.seeHours()
+                marks.editHours()
+              }}
               inputMode="numeric"
               maxLength={10}
               disabled={busy !== ""}
+              aria-invalid={marks.hoursTone === "bad"}
               aria-describedby={hoursHint}
             />
+            <FieldNote id={hoursHint} tone={marks.hoursTone} text={marks.hoursText} />
           </div>
           <button type="submit" disabled={busy !== ""} aria-busy={busy === "save"}>
             {busy === "save" ? "Guardando…" : "Guardar"}
           </button>
-          <p className="hint">
-            <span id={codeHint}>Código: letras, números y guiones, hasta 32.</span>{" "}
-            <span id={hoursHint}>Horómetro: horas enteras, solo números.</span>
-          </p>
         </form>
       ) : null}
       {notes.map((note) => (
