@@ -5,6 +5,8 @@
   --chalk: #e7e1d6;
   --steel: #a3988a;
   --vest: #f5b400;
+  --ok: #9dce78;
+  --bad: #ef7a6a;
   --ink: #1a1408;
   color-scheme: dark;
 }
@@ -134,11 +136,26 @@ form {
   gap: 0.3rem;
 }
 
-.hint {
-  grid-column: 1 / -1;
+.mark {
   margin: 0;
   color: var(--steel);
   font-size: 0.875rem;
+}
+
+.mark.good {
+  color: var(--ok);
+}
+
+.mark.bad {
+  color: var(--bad);
+}
+
+input.good {
+  border-color: var(--ok);
+}
+
+input.bad {
+  border-color: var(--bad);
 }
 
 form > button {
