@@ -442,11 +442,15 @@ function Machine({
           </button>
         </form>
       ) : null}
-      {notes.map((note) => (
-        <p key={note.id} className="note">
-          Anotado en {note.horometerHours} h
-        </p>
-      ))}
+      {notes.length > 0 ? (
+        <div className="notes">
+          {notes.map((note) => (
+            <p key={note.id} className="note">
+              Anotado en {note.horometerHours} h
+            </p>
+          ))}
+        </div>
+      ) : null}
       {error ? <p role="alert">{error}</p> : null}
     </li>
   )

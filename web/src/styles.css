@@ -58,13 +58,17 @@ h1 {
   padding: 0;
 }
 
+.entry {
+  border-top: 1px solid var(--line);
+  padding-bottom: 1.35rem;
+}
+
 .machine {
   display: grid;
   grid-template-columns: 8.5rem 1fr auto auto;
   gap: 0.45rem 1rem;
   align-items: baseline;
-  padding: 0.95rem 0.2rem;
-  border-top: 1px solid var(--line);
+  padding: 0.95rem 0.2rem 0.15rem;
 }
 
 .entry.due {
@@ -77,7 +81,7 @@ h1 {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: end;
-  padding: 0 0.2rem 0.85rem;
+  padding: 0.35rem 0.2rem 0;
 }
 
 .edit {
@@ -91,8 +95,16 @@ button.quiet {
   border-color: var(--line);
 }
 
+.notes {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1rem 0.2rem 0;
+  padding: 0.15rem 0 0.15rem 0.75rem;
+  border-left: 3px solid var(--line);
+}
+
 .note {
-  margin: 0 0 0.4rem;
+  margin: 0;
   color: var(--steel);
 }
 
@@ -125,10 +137,16 @@ button.quiet {
 
 form {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.9fr) auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(10.5rem, 1.25fr) minmax(0, 1fr) auto;
   gap: 0.75rem 1rem;
   align-items: start;
   margin-top: 1.25rem;
+}
+
+.board > form {
+  margin-top: 1.85rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--line);
 }
 
 .field {
@@ -184,6 +202,17 @@ input,
 select {
   width: 100%;
   min-width: 0;
+}
+
+select {
+  appearance: none;
+  height: 2.75rem;
+  padding-right: 2rem;
+  background-color: var(--bench);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23e7e1d6' stroke-width='1.6' d='M1 1.4 6 6.2 11 1.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.75rem;
 }
 
 button {
