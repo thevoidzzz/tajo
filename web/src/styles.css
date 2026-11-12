@@ -1,7 +1,7 @@
 :root {
   --pit: #16130f;
-  --bench: #241f19;
-  --line: #3a332b;
+  --bench: #2e2820;
+  --line: #5c5348;
   --chalk: #e7e1d6;
   --steel: #a3988a;
   --vest: #f5b400;
@@ -24,7 +24,8 @@ body {
 
 .board {
   max-width: 44rem;
-  padding: 2rem 1.25rem 4rem;
+  margin-inline: auto;
+  padding: 2.5rem 1.25rem 5rem;
 }
 
 h1 {
@@ -69,8 +70,7 @@ h1 {
   padding-left: 0.75rem;
 }
 
-.actions,
-.edit {
+.actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -80,6 +80,7 @@ h1 {
 
 .edit {
   margin-top: 0;
+  padding: 0 0.2rem 0.85rem;
 }
 
 button.quiet {
@@ -121,11 +122,11 @@ button.quiet {
 }
 
 form {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.9fr) auto;
   gap: 0.75rem 1rem;
   align-items: end;
-  margin-top: 2rem;
+  margin-top: 1.25rem;
 }
 
 label {
@@ -146,8 +147,10 @@ button {
   padding: 0.4rem 0.65rem;
 }
 
-input {
-  min-width: 8rem;
+input,
+select {
+  width: 100%;
+  min-width: 0;
 }
 
 button {
@@ -191,5 +194,13 @@ button {
   .kind,
   .hours {
     grid-column: 1 / -1;
+  }
+
+  form {
+    grid-template-columns: 1fr;
+  }
+
+  form button[type="submit"] {
+    width: 100%;
   }
 }

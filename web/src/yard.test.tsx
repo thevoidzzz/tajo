@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, expect, test, vi } from "vitest"
 
 import { Yard, type Equipment } from "./yard.js"
@@ -40,7 +40,7 @@ test("the yard shows the hours left until the cut", () => {
 
   render(<Yard equipment={[due, truck]} onCreate={async () => {}} />)
 
-  expect(screen.getByText("Faltan 50 h")).toBeTruthy()
+  expect(screen.getByText("Faltan 50 h para el corte")).toBeTruthy()
   expect(screen.getAllByText(/Faltan/).length).toBe(1)
 })
 
@@ -56,6 +56,8 @@ test("the yard lists equipment that requires maintenance first", () => {
   expect(rows[1].textContent).toContain("EX-001")
   expect(rows[1].textContent).toContain("Al día")
   expect(screen.getByText("1 requiere mantenimiento")).toBeTruthy()
+  expect(within(rows[0]).getByRole("button", { name: "Anotar mantenimiento" }).classList.contains("quiet")).toBe(false)
+  expect(within(rows[1]).getByRole("button", { name: "Anotar mantenimiento" }).classList.contains("quiet")).toBe(true)
 })
 
 test("a maintenance recorded from the yard keeps its place in the history", () => {
@@ -126,5 +128,5 @@ test("giving a machine a code, a type and a horometer adds it to the yard", asyn
     type: "camion",
     horometerHours: 1200,
   })
-  expect(screen.getByText("El patio está vacío.")).toBeTruthy()
+  expect(screen.getByText("El patio está vacío. Anota el código y las horas con las que llega.")).toBeTruthy()
 })
