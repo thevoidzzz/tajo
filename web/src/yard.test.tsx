@@ -130,3 +130,47 @@ test("giving a machine a code, a type and a horometer adds it to the yard", asyn
   })
   expect(screen.getByText("El patio está vacío. Anota el código y las horas con las que llega.")).toBeTruthy()
 })
+
+test("the alta holds its button until the machine is saved", async () => {
+  let release: () => void = () => {}
+  const onCreate = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+  )
+  render(<Yard equipment={[]} onCreate={onCreate} />)
+
+  fireEvent.change(screen.getByLabelText("Código"), { target: { value: "CM-014" } })
+  fireEvent.change(screen.getByLabelText("Horómetro"), { target: { value: "1200" } })
+  fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }))
+
+  const waiting = await screen.findByRole("button", { name: "Dando de alta…" })
+  expect((waiting as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(waiting)
+  expect(onCreate).toHaveBeenCalledTimes(1)
+
+  release()
+  expect(await screen.findByRole("button", { name: "Dar de alta" })).toBeTruthy()
+})
+
+test("maintenance holds its button until the note is saved", async () => {
+  let release: () => void = () => {}
+  const onMaintain = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+  )
+  render(<Yard equipment={[due]} onCreate={async () => {}} onMaintain={onMaintain} />)
+
+  fireEvent.click(screen.getByRole("button", { name: "Anotar mantenimiento" }))
+
+  const waiting = await screen.findByRole("button", { name: "Anotando…" })
+  expect((waiting as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(waiting)
+  expect(onMaintain).toHaveBeenCalledTimes(1)
+
+  release()
+  expect(await screen.findByRole("button", { name: "Anotar mantenimiento" })).toBeTruthy()
+})

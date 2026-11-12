@@ -19,6 +19,22 @@ afterAll(async () => {
   await pool.end()
 })
 
+test("a request records how long it took", async () => {
+  const lines: string[] = []
+  const write = console.log
+  console.log = (line?: unknown) => {
+    lines.push(String(line))
+  }
+  try {
+    const response = await request(createApp(pool)).get("/health")
+
+    expect(response.status).toBe(200)
+    expect(lines.some((line) => /^GET \/health 200 \d+ms$/.test(line))).toBe(true)
+  } finally {
+    console.log = write
+  }
+})
+
 test("health is ok when the database answers", async () => {
   const response = await request(createApp(pool)).get("/health")
 
