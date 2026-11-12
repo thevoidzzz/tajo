@@ -42,14 +42,15 @@ process.stdin.on("data", (chunk) => {
   raw += chunk;
 });
 process.stdin.on("end", () => {
+  const cleaned = raw.replace(/\u001b\[[0-9;]*m/g, "");
   const absolute = (host) =>
     host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
   let page = "";
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
   if (start !== -1 && end > start) {
     try {
-      const json = JSON.parse(raw.slice(start, end + 1));
+      const json = JSON.parse(cleaned.slice(start, end + 1));
       const alias = Array.isArray(json.alias)
         ? json.alias.find((item) => typeof item === "string" && item !== "")
         : "";
@@ -60,8 +61,8 @@ process.stdin.on("end", () => {
     }
   }
   if (!page) {
-    const matches = raw.match(/https?:\/\/\S+/g);
-    if (matches && matches.length) page = matches[matches.length - 1];
+    const matches = cleaned.match(/https?:\/\/\S+/g);
+    if (matches && matches.length) page = matches[matches.length - 1].replace(/[",);.\]]+$/, "");
   }
   if (!page) process.exit(1);
   process.stdout.write(page);
