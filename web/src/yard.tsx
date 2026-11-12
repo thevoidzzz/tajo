@@ -8,18 +8,47 @@ export type Equipment = {
   status: "Requiere mantenimiento" | "Al día"
 }
 
+export type MaintenanceNote = {
+  id: string
+  horometerHours: number
+}
+
+export type EquipmentChange = {
+  code: string
+  type: Equipment["type"]
+  horometerHours: number
+}
+
 const typeName: Record<Equipment["type"], string> = {
   camion: "Camión",
   excavadora: "Excavadora",
   perforadora: "Perforadora",
 }
 
+function message(caught: unknown): string {
+  if (caught instanceof Error && caught.message === "horometer_below_cycle") {
+    return "El horómetro no puede quedar detrás del inicio del ciclo."
+  }
+  if (caught instanceof Error && caught.message === "duplicate_code") {
+    return "Ese código ya está en el patio."
+  }
+  return "Revisa el código, el tipo y el horómetro."
+}
+
 export function Yard({
   equipment,
+  history = {},
   onCreate,
+  onUpdate = async () => {},
+  onDelete = async () => {},
+  onMaintain = async () => {},
 }: {
   equipment: Equipment[]
-  onCreate: (input: { code: string; type: Equipment["type"]; horometerHours: number }) => Promise<void>
+  history?: Record<string, MaintenanceNote[]>
+  onCreate: (input: EquipmentChange) => Promise<void>
+  onUpdate?: (id: string, input: EquipmentChange) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
+  onMaintain?: (id: string) => Promise<void>
 }) {
   const [code, setCode] = useState("")
   const [type, setType] = useState<Equipment["type"]>("camion")
@@ -40,11 +69,7 @@ export function Yard({
       setHorometer("")
       setError("")
     } catch (caught) {
-      setError(
-        caught instanceof Error && caught.message === "duplicate_code"
-          ? "Ese código ya está en el patio."
-          : "Revisa el código, el tipo y el horómetro.",
-      )
+      setError(message(caught))
     }
   }
 
@@ -57,17 +82,16 @@ export function Yard({
         <p className="empty">El patio está vacío.</p>
       ) : (
         <ul className="yard">
-          {equipment.map((item) => {
-            const due = item.status === "Requiere mantenimiento"
-            return (
-              <li key={item.id} className={due ? "machine due" : "machine"}>
-                <span className="code">{item.code}</span>
-                <span className="kind">{typeName[item.type]}</span>
-                <span className="hours">{item.horometerHours} h</span>
-                <span className={due ? "status due" : "status"}>{item.status}</span>
-              </li>
-            )
-          })}
+          {equipment.map((item) => (
+            <Machine
+              key={item.id}
+              item={item}
+              notes={history[item.id] ?? []}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onMaintain={onMaintain}
+            />
+          ))}
         </ul>
       )}
       <form onSubmit={submit}>
@@ -85,15 +109,141 @@ export function Yard({
         </label>
         <label>
           Horómetro
-          <input
-            value={horometer}
-            onChange={(event) => setHorometer(event.target.value)}
-            inputMode="numeric"
-          />
+          <input value={horometer} onChange={(event) => setHorometer(event.target.value)} inputMode="numeric" />
         </label>
         <button type="submit">Dar de alta</button>
       </form>
       {error ? <p role="alert">{error}</p> : null}
     </main>
+  )
+}
+
+function Machine({
+  item,
+  notes,
+  onUpdate,
+  onDelete,
+  onMaintain,
+}: {
+  item: Equipment
+  notes: MaintenanceNote[]
+  onUpdate: (id: string, input: EquipmentChange) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onMaintain: (id: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [code, setCode] = useState(item.code)
+  const [type, setType] = useState(item.type)
+  const [horometer, setHorometer] = useState(String(item.horometerHours))
+  const [error, setError] = useState("")
+  const due = item.status === "Requiere mantenimiento"
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    const hours = Number(horometer)
+    if (code.trim() === "" || horometer.trim() === "" || !Number.isInteger(hours) || hours < 0) {
+      setError("Revisa el código, el tipo y el horómetro.")
+      return
+    }
+    try {
+      await onUpdate(item.id, { code: code.trim(), type, horometerHours: hours })
+      setEditing(false)
+      setError("")
+    } catch (caught) {
+      setError(message(caught))
+    }
+  }
+
+  return (
+    <li className={due ? "entry due" : "entry"}>
+      <div className="machine">
+        <span className="code">{item.code}</span>
+        <span className="kind">{typeName[item.type]}</span>
+        <span className="hours">{item.horometerHours} h</span>
+        <span className={due ? "status due" : "status"}>{item.status}</span>
+      </div>
+      <div className="actions">
+        <button
+          type="button"
+          className="quiet"
+          onClick={() => {
+            void onMaintain(item.id).catch((caught) => setError(message(caught)))
+          }}
+        >
+          Anotar mantenimiento
+        </button>
+        {editing ? null : (
+          <button
+            type="button"
+            className="quiet"
+            onClick={() => {
+              setCode(item.code)
+              setType(item.type)
+              setHorometer(String(item.horometerHours))
+              setEditing(true)
+              setError("")
+            }}
+          >
+            Cambiar
+          </button>
+        )}
+        {confirming ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void onDelete(item.id).catch((caught) => setError(message(caught)))
+              }}
+            >
+              Confirmar
+            </button>
+            <button type="button" className="quiet" onClick={() => setConfirming(false)}>
+              Cancelar
+            </button>
+          </>
+        ) : (
+          <button type="button" className="quiet" onClick={() => setConfirming(true)}>
+            Sacar del patio
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <form className="edit" onSubmit={save}>
+          <label>
+            Código
+            <input aria-label={`Código de ${item.code}`} value={code} onChange={(event) => setCode(event.target.value)} />
+          </label>
+          <label>
+            Tipo
+            <select
+              aria-label={`Tipo de ${item.code}`}
+              value={type}
+              onChange={(event) => setType(event.target.value as Equipment["type"])}
+            >
+              <option value="camion">Camión</option>
+              <option value="excavadora">Excavadora</option>
+              <option value="perforadora">Perforadora</option>
+            </select>
+          </label>
+          <label>
+            Horómetro
+            <input
+              aria-label={`Horómetro de ${item.code}`}
+              value={horometer}
+              onChange={(event) => setHorometer(event.target.value)}
+              inputMode="numeric"
+            />
+          </label>
+          <button type="submit">Guardar</button>
+        </form>
+      ) : null}
+      {notes.map((note) => (
+        <p key={note.id} className="note">
+          Anotado en {note.horometerHours} h
+        </p>
+      ))}
+      {error ? <p role="alert">{error}</p> : null}
+    </li>
   )
 }
