@@ -42,18 +42,28 @@ process.stdin.on("data", (chunk) => {
   raw += chunk;
 });
 process.stdin.on("end", () => {
-  let json;
-  try {
-    json = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-  } catch {
-    process.exit(1);
+  const absolute = (host) =>
+    host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
+  let page = "";
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try {
+      const json = JSON.parse(raw.slice(start, end + 1));
+      const alias = Array.isArray(json.alias)
+        ? json.alias.find((item) => typeof item === "string" && item !== "")
+        : "";
+      const host = alias || json.url;
+      if (typeof host === "string" && host !== "") page = absolute(host);
+    } catch {
+      page = "";
+    }
   }
-  const alias = Array.isArray(json.alias)
-    ? json.alias.find((item) => typeof item === "string" && item !== "")
-    : "";
-  const host = alias || json.url;
-  if (typeof host !== "string" || host === "") process.exit(1);
-  const page = host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
+  if (!page) {
+    const matches = raw.match(/https?:\/\/\S+/g);
+    if (matches && matches.length) page = matches[matches.length - 1];
+  }
+  if (!page) process.exit(1);
   process.stdout.write(page);
 });
 '
