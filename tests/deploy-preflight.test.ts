@@ -78,13 +78,3 @@ test("deploy stops before publish when fly is missing", async () => {
   expect(result.stderr).toContain("fly")
   await expect(readFile(log, "utf8")).rejects.toThrow()
 })
-
-test("a complete preflight does not publish", async () => {
-  const { bin, log } = await sandboxPath()
-
-  const result = await run(bin, completeEnv)
-
-  expect(result.code).toBe(0)
-  expect(result.stdout).toContain("paso: preflight")
-  await expect(readFile(log, "utf8")).rejects.toThrow()
-})

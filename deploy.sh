@@ -34,6 +34,31 @@ require_var() {
   fi
 }
 
+read_page_url() {
+  node -e '
+let raw = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  raw += chunk;
+});
+process.stdin.on("end", () => {
+  let json;
+  try {
+    json = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+  } catch {
+    process.exit(1);
+  }
+  const alias = Array.isArray(json.alias)
+    ? json.alias.find((item) => typeof item === "string" && item !== "")
+    : "";
+  const host = alias || json.url;
+  if (typeof host !== "string" || host === "") process.exit(1);
+  const page = host.startsWith("http://") || host.startsWith("https://") ? host : "https://" + host;
+  process.stdout.write(page);
+});
+'
+}
+
 printf 'paso: preflight\n'
 require_fly
 require_tool vercel
@@ -45,3 +70,42 @@ require_var FLY_API_TOKEN
 require_var VERCEL_ORG_ID
 require_var VERCEL_PROJECT_ID
 require_var VERCEL_TOKEN
+
+if [[ ! "$FLY_APP" =~ ^[a-z0-9-]+$ ]]; then
+  printf 'FLY_APP no sirve como nombre de la app\n' >&2
+  exit 1
+fi
+
+fly=$(command -v fly || command -v flyctl)
+api_url="https://${FLY_APP}.fly.dev"
+
+printf 'paso: pagina\n'
+if ! page_json=$(vercel deploy web --prod --yes --non-interactive --build-env "VITE_API_URL=${api_url}"); then
+  printf 'no se pudo publicar la pagina\n' >&2
+  exit 1
+fi
+if ! page_url=$(printf '%s' "$page_json" | read_page_url); then
+  printf 'no se pudo leer la URL de la pagina\n' >&2
+  exit 1
+fi
+
+printf 'paso: api\n'
+if ! "$fly" status --app "$FLY_APP" >/dev/null 2>&1; then
+  "$fly" apps create "$FLY_APP"
+fi
+"$fly" secrets set "DATABASE_URL=${DATABASE_URL}" "WEB_ORIGIN=${page_url}" --app "$FLY_APP" --stage
+config=$(mktemp)
+trap 'rm -f "$config"' EXIT
+sed "s/^app = .*/app = \"${FLY_APP}\"/" fly.toml > "$config"
+"$fly" deploy --remote-only --ha=false --now --app "$FLY_APP" --config "$config"
+
+printf 'paso: migrar\n'
+require_tool npm
+npm run build
+node dist/migrate-cli.js
+
+printf 'paso: pagina-ok\n'
+curl --fail --silent --show-error --max-time 30 "$page_url"
+
+printf 'paso: health\n'
+curl --fail --silent --show-error --max-time 30 "${api_url}/health"
