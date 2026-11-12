@@ -59,6 +59,45 @@ process.stdin.on("end", () => {
 '
 }
 
+read_previous_image() {
+  node -e '
+let raw = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  raw += chunk;
+});
+process.stdin.on("end", () => {
+  let releases;
+  try {
+    releases = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1));
+  } catch {
+    process.exit(1);
+  }
+  const previous = Array.isArray(releases) ? releases[1] : undefined;
+  const image = previous && (previous.ImageRef || previous.image_ref);
+  if (typeof image !== "string" || image === "") process.exit(1);
+  process.stdout.write(image);
+});
+'
+}
+
+rollback() {
+  printf 'paso: rollback\n'
+  if ! releases=$("$fly" releases --json --app "$FLY_APP"); then
+    printf 'no se pudo leer la imagen anterior\n' >&2
+    exit 1
+  fi
+  if ! previous=$(printf '%s' "$releases" | read_previous_image); then
+    printf 'no hay imagen anterior\n' >&2
+    exit 1
+  fi
+  if ! "$fly" deploy --image "$previous" --ha=false --now --app "$FLY_APP" --config "$config"; then
+    printf 'no se pudo restaurar la imagen anterior\n' >&2
+    exit 1
+  fi
+  exit 1
+}
+
 printf 'paso: preflight\n'
 require_fly
 require_tool vercel
@@ -108,4 +147,6 @@ printf 'paso: pagina-ok\n'
 curl --fail --silent --show-error --max-time 30 "$page_url"
 
 printf 'paso: health\n'
-curl --fail --silent --show-error --max-time 30 "${api_url}/health"
+if ! curl --fail --silent --show-error --max-time 30 "${api_url}/health"; then
+  rollback
+fi
